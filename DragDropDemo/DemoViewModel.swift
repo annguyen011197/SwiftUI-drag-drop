@@ -11,38 +11,48 @@ class DemoViewModel {
 
     init() {
         itemsA = [
-            GridItem(label: "Red", hue: 0.00),
-            GridItem(label: "Orange", hue: 0.08),
-            GridItem(label: "Yellow", hue: 0.16),
-            GridItem(label: "Green", hue: 0.33),
-            GridItem(label: "Blue", hue: 0.58),
-            GridItem(label: "Purple", hue: 0.75),
-            GridItem(label: "Pink", hue: 0.92),
-            GridItem(label: "Brown", hue: 0.07),
+            GridItem(label: "Red", hue: 0.00, index: 0),
+            GridItem(label: "Orange", hue: 0.08, index: 1),
+            GridItem(label: "Yellow", hue: 0.16, index: 2),
+            GridItem(label: "Green", hue: 0.33, index: 3),
+            GridItem(label: "Blue", hue: 0.58, index: 4),
+            GridItem(label: "Purple", hue: 0.75, index: 5),
+            GridItem(label: "Pink", hue: 0.92, index: 6),
+            GridItem(label: "Brown", hue: 0.07, index: 7),
         ]
         itemsB = [
-            GridItem(label: "Apple", hue: 0.00),
-            GridItem(label: "Mango", hue: 0.08),
-            GridItem(label: "Lemon", hue: 0.16),
-            GridItem(label: "Clover", hue: 0.33),
-            GridItem(label: "Gem", hue: 0.55),
-            GridItem(label: "Grape", hue: 0.75),
-            GridItem(label: "Berry", hue: 0.65),
-            GridItem(label: "Cherry", hue: 0.98),
+            GridItem(label: "Apple", hue: 0.00, index: 0),
+            GridItem(label: "Mango", hue: 0.08, index: 1),
+            GridItem(label: "Lemon", hue: 0.16, index: 2),
+            GridItem(label: "Clover", hue: 0.33, index: 3),
+            GridItem(label: "Gem", hue: 0.55, index: 4),
+            GridItem(label: "Grape", hue: 0.75, index: 5),
+            GridItem(label: "Berry", hue: 0.65, index: 6),
+            GridItem(label: "Cherry", hue: 0.98, index: 7),
         ]
     }
 
-    func moveItems(_ items: [GridItem], to destination: Section) {
+    func moveItems(_ items: [GridItem], to destination: Section, at index: Int) {
         withAnimation(.spring()) {
             for item in items {
-                if let index = itemsA.firstIndex(where: { $0.id == item.id }) {
-                    itemsA.remove(at: index)
-                } else if let index = itemsB.firstIndex(where: { $0.id == item.id }) {
-                    itemsB.remove(at: index)
+                var adjustedIndex = index
+
+                if let srcIndex = itemsA.firstIndex(where: { $0.id == item.id }) {
+                    itemsA.remove(at: srcIndex)
+                    if destination == .a && srcIndex < adjustedIndex {
+                        adjustedIndex -= 1
+                    }
+                } else if let srcIndex = itemsB.firstIndex(where: { $0.id == item.id }) {
+                    itemsB.remove(at: srcIndex)
                 }
+
                 switch destination {
-                case .a: itemsA.append(item)
-                case .b: itemsB.append(item)
+                case .a:
+                    adjustedIndex = min(adjustedIndex, itemsA.count)
+                    itemsA.insert(item, at: adjustedIndex)
+                case .b:
+                    itemsB.append(item)
+                    itemsB.sort { $0.index < $1.index }
                 }
             }
         }

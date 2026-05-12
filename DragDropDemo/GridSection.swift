@@ -7,7 +7,9 @@ struct GridSection: View {
     let columnCount: Int
     let triggerShake: Bool
     let fillsRemainingSpace: Bool
-    let onDrop: ([GridItem]) -> Void
+    let onDrop: ([GridItem], Int) -> Void
+
+    @State private var gridFrame: CGRect = .zero
 
     private var rows: [[GridItem?]] {
         var result: [[GridItem?]] = []
@@ -27,6 +29,16 @@ struct GridSection: View {
         return result
     }
 
+    private func insertionIndex(at point: CGPoint) -> Int {
+        guard gridFrame.width > 0 else { return items.count }
+        let spacing: CGFloat = 8
+        let cellWidth = (gridFrame.width - CGFloat(columnCount - 1) * spacing) / CGFloat(columnCount)
+        let cellHeight = cellWidth
+        let row = max(0, Int((point.y - gridFrame.minY) / (cellHeight + spacing)))
+        let col = max(0, min(Int((point.x - gridFrame.minX) / (cellWidth + spacing)), columnCount - 1))
+        return min(row * columnCount + col, items.count)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
@@ -44,12 +56,18 @@ struct GridSection: View {
                     }
                 }
             }
+            .onGeometryChange(for: CGRect.self) { proxy in
+                proxy.frame(in: .named("grid"))
+            } action: { newFrame in
+                gridFrame = newFrame
+            }
             .padding(fillsRemainingSpace ? 12 : 0)
         }
+        .coordinateSpace(name: "grid")
         .contentShape(Rectangle())
-        .dropDestination(for: GridItem.self) { droppedItems, _ in
-            onDrop(droppedItems)
-            return true
+        .dropDestination(for: GridItem.self) { droppedItems, session in
+            let idx = insertionIndex(at: session.location)
+            onDrop(droppedItems, idx)
         }
     }
 }

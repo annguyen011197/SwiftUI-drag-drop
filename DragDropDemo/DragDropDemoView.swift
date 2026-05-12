@@ -14,7 +14,7 @@ struct DragDropDemoView: View {
                         columnCount: viewModel.columnCount,
                         triggerShake: viewModel.triggerShake,
                         fillsRemainingSpace: false,
-                        onDrop: { viewModel.moveItems($0, to: .a) }
+                        onDrop: { viewModel.moveItems($0, to: .a, at: $1) }
                     )
                     GridSection(
                         title: "Section B",
@@ -23,7 +23,7 @@ struct DragDropDemoView: View {
                         columnCount: viewModel.columnCount,
                         triggerShake: viewModel.triggerShake,
                         fillsRemainingSpace: true,
-                        onDrop: { viewModel.moveItems($0, to: .b) }
+                        onDrop: { viewModel.moveItems($0, to: .b, at: $1) }
                     )
                     .frame(maxHeight: .infinity)
                 }
