@@ -32,20 +32,25 @@ class DemoViewModel: ObservableObject {
         ]
     }
 
-    func moveItems(_ items: [GridItem], to destination: Section, at index: Int) {
+    func moveItem(id: UUID, to destination: Section, at index: Int) {
         withAnimation(.spring()) {
-            for item in items {
-                var adjustedIndex = index
+            var adjustedIndex = index
 
-                if let srcIndex = itemsA.firstIndex(where: { $0.id == item.id }) {
-                    itemsA.remove(at: srcIndex)
-                    if destination == .a && srcIndex < adjustedIndex {
-                        adjustedIndex -= 1
-                    }
-                } else if let srcIndex = itemsB.firstIndex(where: { $0.id == item.id }) {
-                    itemsB.remove(at: srcIndex)
+            if let srcIndex = itemsA.firstIndex(where: { $0.id == id }) {
+                let item = itemsA.remove(at: srcIndex)
+                if destination == .a && srcIndex < adjustedIndex {
+                    adjustedIndex -= 1
                 }
-
+                switch destination {
+                case .a:
+                    adjustedIndex = min(adjustedIndex, itemsA.count)
+                    itemsA.insert(item, at: adjustedIndex)
+                case .b:
+                    itemsB.append(item)
+                    itemsB.sort { $0.index < $1.index }
+                }
+            } else if let srcIndex = itemsB.firstIndex(where: { $0.id == id }) {
+                let item = itemsB.remove(at: srcIndex)
                 switch destination {
                 case .a:
                     adjustedIndex = min(adjustedIndex, itemsA.count)

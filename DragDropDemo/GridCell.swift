@@ -3,7 +3,6 @@ import SwiftUI
 struct GridCell: View {
     let item: GridItem
     let triggerShake: Bool
-    @Binding var draggedItem: GridItem?
 
     var body: some View {
         RoundedRectangle(cornerRadius: 8)
@@ -16,8 +15,7 @@ struct GridCell: View {
                     .foregroundColor(.white)
             )
             .onDrag {
-                draggedItem = item
-                return NSItemProvider()
+                NSItemProvider(object: item.id.uuidString as NSString)
             }
             .modifier(ShakeEffect(trigger: triggerShake))
     }

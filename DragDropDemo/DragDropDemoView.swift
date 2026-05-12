@@ -2,7 +2,6 @@ import SwiftUI
 
 struct DragDropDemoView: View {
     @StateObject private var viewModel = DemoViewModel()
-    @State private var draggedItem: GridItem?
 
     var body: some View {
         GeometryReader { geo in
@@ -15,8 +14,7 @@ struct DragDropDemoView: View {
                         columnCount: viewModel.columnCount,
                         triggerShake: viewModel.triggerShake,
                         fillsRemainingSpace: false,
-                        draggedItem: $draggedItem,
-                        onDrop: { viewModel.moveItems($0, to: .a, at: $1) }
+                        onDrop: { viewModel.moveItem(id: $0, to: .a, at: $1) }
                     )
                     GridSection(
                         title: "Section B",
@@ -25,8 +23,7 @@ struct DragDropDemoView: View {
                         columnCount: viewModel.columnCount,
                         triggerShake: viewModel.triggerShake,
                         fillsRemainingSpace: true,
-                        draggedItem: $draggedItem,
-                        onDrop: { viewModel.moveItems($0, to: .b, at: $1) }
+                        onDrop: { viewModel.moveItem(id: $0, to: .b, at: $1) }
                     )
                     .frame(maxHeight: .infinity)
                 }

@@ -1,9 +1,9 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-private struct GridFramePreferenceKey: PreferenceKey {
-    static let defaultValue: CGRect = .zero
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+private struct GridSizePreferenceKey: PreferenceKey {
+    static let defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
         value = nextValue()
     }
 }
@@ -15,10 +15,10 @@ struct GridSection: View {
     let columnCount: Int
     let triggerShake: Bool
     let fillsRemainingSpace: Bool
-    @Binding var draggedItem: GridItem?
-    let onDrop: ([GridItem], Int) -> Void
+    let onDrop: (UUID, Int) -> Void
 
-    @State private var gridFrame: CGRect = .zero
+    @State private var gridSize: CGSize = .zero
+    @State private var titleHeight: CGFloat = 0
 
     private var rows: [[GridItem?]] {
         var result: [[GridItem?]] = []
@@ -39,12 +39,17 @@ struct GridSection: View {
     }
 
     private func insertionIndex(at point: CGPoint) -> Int {
-        guard gridFrame.width > 0 else { return items.count }
+        guard gridSize.width > 0 else { return items.count }
+        
         let spacing: CGFloat = 8
-        let cellWidth = (gridFrame.width - CGFloat(columnCount - 1) * spacing) / CGFloat(columnCount)
+        let padding: CGFloat = fillsRemainingSpace ? 12 : 0
+        let gridTop = titleHeight + spacing + padding
+        let cellWidth = (gridSize.width - CGFloat(columnCount - 1) * spacing) / CGFloat(columnCount)
         let cellHeight = cellWidth
-        let row = max(0, Int((point.y - gridFrame.minY) / (cellHeight + spacing)))
-        let col = max(0, min(Int((point.x - gridFrame.minX) / (cellWidth + spacing)), columnCount - 1))
+        let row = max(0, Int((point.y - gridTop) / (cellHeight + spacing)))
+        let col = max(0, min(Int(ceil((point.x - padding) / (cellWidth + spacing))), columnCount - 1))
+        print("Cell width = \(cellWidth)")
+        print("Drop at \(point) \n row = \(Int((point.y - gridTop) / (cellHeight + spacing))) \n col = \((point.x - padding) / (cellWidth + spacing))")
         return min(row * columnCount + col, items.count)
     }
 
@@ -52,12 +57,20 @@ struct GridSection: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.headline)
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(key: GridSizePreferenceKey.self, value: geo.size)
+                    }
+                )
+                .onPreferenceChange(GridSizePreferenceKey.self) { size in
+                    titleHeight = size.height
+                }
             VStack(spacing: 8) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                     HStack(spacing: 8) {
                         ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
                             if let item = cell {
-                                GridCell(item: item, triggerShake: triggerShake, draggedItem: $draggedItem)
+                                GridCell(item: item, triggerShake: triggerShake)
                             } else {
                                 Color.clear
                             }
@@ -67,56 +80,36 @@ struct GridSection: View {
             }
             .background(
                 GeometryReader { geo in
-                    Color.clear.preference(
-                        key: GridFramePreferenceKey.self,
-                        value: geo.frame(in: .named("grid"))
-                    )
+//                    Color.clear.preference(key: GridSizePreferenceKey.self, value: geo.size)
+                    Color.clear.onAppear {
+                        gridSize = geo.size
+                    }
                 }
             )
-            .onPreferenceChange(GridFramePreferenceKey.self) { frame in
-                gridFrame = frame
-            }
+//            .onPreferenceChange(GridSizePreferenceKey.self) { size in
+//                gridSize = size
+//            }
             .padding(fillsRemainingSpace ? 12 : 0)
         }
-        .coordinateSpace(name: "grid")
         .contentShape(Rectangle())
-        .onDrop(of: [UTType.item], delegate: GridDropDelegate(
-            draggedItem: $draggedItem,
-            items: items,
-            gridFrame: gridFrame,
-            columnCount: columnCount,
-            onDrop: onDrop
-        ))
-    }
-}
-
-struct GridDropDelegate: DropDelegate {
-    @Binding var draggedItem: GridItem?
-    let items: [GridItem]
-    let gridFrame: CGRect
-    let columnCount: Int
-    let onDrop: ([GridItem], Int) -> Void
-
-    func validateDrop(info: DropInfo) -> Bool {
-        draggedItem != nil
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        guard let item = draggedItem else { return false }
-        let point = info.location
-        let idx = computeIndex(at: point)
-        onDrop([item], idx)
-        draggedItem = nil
-        return true
-    }
-
-    private func computeIndex(at point: CGPoint) -> Int {
-        guard gridFrame.width > 0 else { return items.count }
-        let spacing: CGFloat = 8
-        let cellWidth = (gridFrame.width - CGFloat(columnCount - 1) * spacing) / CGFloat(columnCount)
-        let cellHeight = cellWidth
-        let row = max(0, Int((point.y - gridFrame.minY) / (cellHeight + spacing)))
-        let col = max(0, min(Int((point.x - gridFrame.minX) / (cellWidth + spacing)), columnCount - 1))
-        return min(row * columnCount + col, items.count)
+        .onDrop(of: [UTType.plainText], isTargeted: nil) { providers, point in
+            guard let provider = providers.first else { return false }
+            let idx = insertionIndex(at: point)
+            provider.loadItem(forTypeIdentifier: UTType.plainText.identifier, options: nil) { data, _ in
+                let uuidString: String?
+                if let str = data as? String {
+                    uuidString = str
+                } else if let data = data as? Data {
+                    uuidString = String(data: data, encoding: .utf8)
+                } else {
+                    uuidString = nil
+                }
+                guard let uuidString, let uuid = UUID(uuidString: uuidString) else { return }
+                DispatchQueue.main.async {
+                    onDrop(uuid, idx)
+                }
+            }
+            return true
+        }
     }
 }
