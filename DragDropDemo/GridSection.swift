@@ -6,6 +6,7 @@ struct GridSection: View {
     let section: DemoViewModel.Section
     let columnCount: Int
     let triggerShake: Bool
+    let fillsRemainingSpace: Bool
     let onDrop: ([GridItem]) -> Void
 
     private var rows: [[GridItem?]] {
@@ -37,29 +38,18 @@ struct GridSection: View {
                             if let item = cell {
                                 GridCell(item: item, triggerShake: triggerShake)
                             } else {
-                                PlaceholderCell()
+                                Color.clear
                             }
                         }
                     }
                 }
             }
+            .padding(fillsRemainingSpace ? 12 : 0)
         }
+        .contentShape(Rectangle())
         .dropDestination(for: GridItem.self) { droppedItems, _ in
             onDrop(droppedItems)
             return true
         }
-    }
-}
-
-struct PlaceholderCell: View {
-    var body: some View {
-        RoundedRectangle(cornerRadius: 8)
-            .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [5]))
-            .fill(Color.gray.opacity(0.1))
-            .aspectRatio(1, contentMode: .fit)
-            .overlay {
-                Image(systemName: "plus")
-                    .foregroundStyle(.secondary)
-            }
     }
 }
