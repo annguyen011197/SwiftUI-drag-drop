@@ -4,7 +4,7 @@ import SwiftUI
 struct DragDropDemoApp: App {
     var body: some Scene {
         WindowGroup {
-            NavigationStack {
+            NavigationView {
                 HomeView()
             }
         }

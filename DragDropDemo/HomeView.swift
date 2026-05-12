@@ -7,11 +7,15 @@ struct HomeView: View {
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .multilineTextAlignment(.center)
-            NavigationLink("Start Demo") {
-                DragDropDemoView()
+            NavigationLink(destination: DragDropDemoView()) {
+                Text("Start Demo")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(Color.accentColor)
+                    .cornerRadius(8)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
         }
         .navigationTitle("Home")
     }

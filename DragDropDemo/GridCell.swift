@@ -3,18 +3,22 @@ import SwiftUI
 struct GridCell: View {
     let item: GridItem
     let triggerShake: Bool
+    @Binding var draggedItem: GridItem?
 
     var body: some View {
         RoundedRectangle(cornerRadius: 8)
             .fill(Color(hue: item.hue, saturation: 0.4, brightness: 0.9))
             .aspectRatio(1, contentMode: .fit)
-            .overlay {
+            .overlay(
                 Text(item.label)
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+                    .foregroundColor(.white)
+            )
+            .onDrag {
+                draggedItem = item
+                return NSItemProvider()
             }
-            .draggable(item)
             .modifier(ShakeEffect(trigger: triggerShake))
     }
 }

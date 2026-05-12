@@ -1,8 +1,6 @@
-import CoreTransferable
 import Foundation
-import UniformTypeIdentifiers
 
-nonisolated struct GridItem: Identifiable, Codable, Hashable, Transferable {
+struct GridItem: Identifiable, Codable, Hashable {
     let id: UUID
     let label: String
     let hue: Double
@@ -13,9 +11,5 @@ nonisolated struct GridItem: Identifiable, Codable, Hashable, Transferable {
         self.label = label
         self.hue = hue
         self.index = index
-    }
-
-    static var transferRepresentation: some TransferRepresentation {
-        CodableRepresentation(contentType: .json)
     }
 }

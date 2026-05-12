@@ -1,11 +1,11 @@
+import Combine
 import SwiftUI
 
-@Observable
-class DemoViewModel {
-    var itemsA: [GridItem]
-    var itemsB: [GridItem]
-    var columnCount = 3
-    var triggerShake = false
+class DemoViewModel: ObservableObject {
+    @Published var itemsA: [GridItem]
+    @Published var itemsB: [GridItem]
+    @Published var columnCount = 3
+    @Published var triggerShake = false
 
     enum Section { case a, b }
 

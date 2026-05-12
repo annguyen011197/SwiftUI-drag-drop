@@ -1,7 +1,8 @@
 import SwiftUI
 
 struct DragDropDemoView: View {
-    @State private var viewModel = DemoViewModel()
+    @StateObject private var viewModel = DemoViewModel()
+    @State private var draggedItem: GridItem?
 
     var body: some View {
         GeometryReader { geo in
@@ -14,6 +15,7 @@ struct DragDropDemoView: View {
                         columnCount: viewModel.columnCount,
                         triggerShake: viewModel.triggerShake,
                         fillsRemainingSpace: false,
+                        draggedItem: $draggedItem,
                         onDrop: { viewModel.moveItems($0, to: .a, at: $1) }
                     )
                     GridSection(
@@ -23,6 +25,7 @@ struct DragDropDemoView: View {
                         columnCount: viewModel.columnCount,
                         triggerShake: viewModel.triggerShake,
                         fillsRemainingSpace: true,
+                        draggedItem: $draggedItem,
                         onDrop: { viewModel.moveItems($0, to: .b, at: $1) }
                     )
                     .frame(maxHeight: .infinity)
@@ -39,8 +42,7 @@ struct DragDropDemoView: View {
         }
         .onAppear {
             viewModel.triggerShake = true
-            Task {
-                try? await Task.sleep(for: .seconds(1.5))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 viewModel.triggerShake = false
             }
         }
