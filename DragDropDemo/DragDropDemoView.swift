@@ -7,23 +7,13 @@ struct DragDropDemoView: View {
         GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 24) {
-                    SectionView(
-                        title: "Section A",
-                        items: viewModel.itemsA,
-                        columnCount: viewModel.columnCount,
-                        triggerShake: viewModel.triggerShake
-                    )
-                    SectionView(
-                        title: "Section B",
-                        items: viewModel.itemsB,
-                        columnCount: viewModel.columnCount,
-                        triggerShake: viewModel.triggerShake
-                    )
+                    SectionView(section: .a, availableWidth: geo.size.width - 32)
+                    SectionView(section: .b, availableWidth: geo.size.width - 32)
                 }
-                .frame(minHeight: geo.size.height)
                 .padding()
             }
         }
+        .environmentObject(viewModel)
         .navigationTitle("Workspace")
         .toolbar {
             ToolbarItem(placement: .bottomBar) {
@@ -40,26 +30,62 @@ struct DragDropDemoView: View {
 }
 
 private struct SectionView: View {
-    let title: String
-    let items: [GridItem]
-    let columnCount: Int
-    let triggerShake: Bool
+    let section: DemoViewModel.Section
+    let availableWidth: CGFloat
 
-    private var columns: [SwiftUI.GridItem] {
-        Array(repeating: SwiftUI.GridItem(.flexible(), spacing: 8), count: columnCount)
+    @EnvironmentObject private var viewModel: DemoViewModel
+
+    private var items: [GridItem] {
+        switch section {
+        case .a: return viewModel.itemsA
+        case .b: return viewModel.itemsB
+        }
+    }
+
+    private var offsets: [String: CGPoint] {
+        switch section {
+        case .a: return viewModel.offsetsA
+        case .b: return viewModel.offsetsB
+        }
+    }
+
+    private var itemSize: CGFloat {
+        (availableWidth - CGFloat(viewModel.columnCount - 1) * viewModel.spacing) / CGFloat(viewModel.columnCount)
+    }
+
+    private var totalHeight: CGFloat {
+        guard !items.isEmpty else { return itemSize }
+        let rows = CGFloat((items.count + viewModel.columnCount - 1) / viewModel.columnCount)
+        return rows * itemSize + (rows - 1) * viewModel.spacing
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
+            Text(section == .a ? "Section A" : "Section B")
                 .font(.headline)
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 8) {
-                    ForEach(items) { item in
-                        CellView(item: item, triggerShake: triggerShake)
-                    }
+            ZStack(alignment: .topLeading) {
+                Color.clear
+                    .frame(height: totalHeight)
+
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    let offset = offsets[item.id] ?? CGPoint(
+                        x: CGFloat(index % viewModel.columnCount) * (itemSize + viewModel.spacing),
+                        y: CGFloat(index / viewModel.columnCount) * (itemSize + viewModel.spacing)
+                    )
+                    CellView(item: item, triggerShake: viewModel.triggerShake)
+                        .frame(width: itemSize, height: itemSize)
+                        .offset(x: offset.x, y: offset.y)
                 }
             }
+        }
+        .onAppear {
+            viewModel.updateOffsets(for: section, items: items, availableWidth: availableWidth)
+        }
+        .onChange(of: items) { _ in
+            viewModel.updateOffsets(for: section, items: items, availableWidth: availableWidth)
+        }
+        .onChange(of: viewModel.columnCount) { _ in
+            viewModel.updateOffsets(for: section, items: items, availableWidth: availableWidth)
         }
     }
 }
@@ -71,7 +97,6 @@ private struct CellView: View {
     var body: some View {
         RoundedRectangle(cornerRadius: 8)
             .fill(Color(hue: item.hue, saturation: 0.4, brightness: 0.9))
-            .aspectRatio(1, contentMode: .fit)
             .overlay(
                 Text(item.label)
                     .font(.caption)

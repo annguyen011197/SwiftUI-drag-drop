@@ -6,6 +6,10 @@ class DemoViewModel: ObservableObject {
     @Published var itemsB: [GridItem]
     @Published var columnCount = 3
     @Published var triggerShake = false
+    @Published var offsetsA: [String: CGPoint] = [:]
+    @Published var offsetsB: [String: CGPoint] = [:]
+
+    let spacing: CGFloat = 8
 
     enum Section { case a, b }
 
@@ -30,5 +34,24 @@ class DemoViewModel: ObservableObject {
             GridItem(label: "Berry", hue: 0.65, index: 6),
             GridItem(label: "Cherry", hue: 0.98, index: 7),
         ]
+    }
+
+    func updateOffsets(for section: Section, items: [GridItem], availableWidth: CGFloat) {
+        let itemSize = (availableWidth - CGFloat(columnCount - 1) * spacing) / CGFloat(columnCount)
+        var newOffsets: [String: CGPoint] = [:]
+        for (index, item) in items.enumerated() {
+            let col = index % columnCount
+            let row = index / columnCount
+            newOffsets[item.id] = CGPoint(
+                x: CGFloat(col) * (itemSize + spacing),
+                y: CGFloat(row) * (itemSize + spacing)
+            )
+        }
+        withAnimation(.spring()) {
+            switch section {
+            case .a: offsetsA = newOffsets
+            case .b: offsetsB = newOffsets
+            }
+        }
     }
 }
