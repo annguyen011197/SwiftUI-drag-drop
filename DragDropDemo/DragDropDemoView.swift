@@ -1,16 +1,57 @@
 import SwiftUI
 
+struct DragContainerConstant {
+    static let coordinateSpaceID: UUID = UUID()
+}
+
+struct DragContainer<T: Equatable, Preview: View>: ViewModifier {
+    @StateObject var dragManager: DragManager<T> = .init()
+    
+    @ViewBuilder var preview: (T) -> Preview
+    
+    func body(content: Content) -> some View {
+        ZStack {
+            content
+                .coordinateSpace(name: DragContainerConstant.coordinateSpaceID)
+                .environmentObject(dragManager)
+            
+            if let item = dragManager.draggedItem {
+                preview(item)
+                    .position(dragManager.dragPosition)
+            }
+            
+        }
+    }
+}
+
 struct DragDropDemoView: View {
     @StateObject private var viewModel = DemoViewModel()
 
     var body: some View {
         GeometryReader { geo in
-            ScrollView {
-                VStack(spacing: 24) {
-                    SectionView(section: .a, availableWidth: geo.size.width - 32)
-                    SectionView(section: .b, availableWidth: geo.size.width - 32)
+            let width = geo.size.width - 32
+            ZStack(alignment: .topLeading) {
+                ScrollView {
+                    VStack(spacing: 24) {
+                        SectionView(section: .a, availableWidth: width)
+                            .dropReceiver(for: viewModel.dropReceiver, model: viewModel)
+                        SectionView(section: .b, availableWidth: width)
+                        
+                    }
+                    .padding()
+                    .modifier(DragContainer(preview: { (item: GridItem) in
+                        CellPreview(item: item)
+                            .frame(width: viewModel.itemSize, height: viewModel.itemSize)
+                    }))
                 }
-                .padding()
+
+
+            }
+            .onAppear {
+                viewModel.availableWidth = width
+            }
+            .onChange(of: geo.size.width) { newWidth in
+                viewModel.availableWidth = newWidth - 32
             }
         }
         .environmentObject(viewModel)
@@ -28,6 +69,8 @@ struct DragDropDemoView: View {
         }
     }
 }
+
+
 
 private struct SectionView: View {
     let section: DemoViewModel.Section
@@ -72,27 +115,18 @@ private struct SectionView: View {
                         x: CGFloat(index % viewModel.columnCount) * (itemSize + viewModel.spacing),
                         y: CGFloat(index / viewModel.columnCount) * (itemSize + viewModel.spacing)
                     )
-                    CellView(item: item, triggerShake: viewModel.triggerShake)
+                    CellView(item: item, section: section, itemSize: itemSize)
                         .frame(width: itemSize, height: itemSize)
                         .offset(x: offset.x, y: offset.y)
+                        .opacity(viewModel.draggingItemId == item.id ? 0.3 : 1.0)
                 }
             }
-        }
-        .onAppear {
-            viewModel.updateOffsets(for: section, items: items, availableWidth: availableWidth)
-        }
-        .onChange(of: items) { _ in
-            viewModel.updateOffsets(for: section, items: items, availableWidth: availableWidth)
-        }
-        .onChange(of: viewModel.columnCount) { _ in
-            viewModel.updateOffsets(for: section, items: items, availableWidth: availableWidth)
         }
     }
 }
 
-private struct CellView: View {
+private struct CellPreview: View {
     let item: GridItem
-    let triggerShake: Bool
 
     var body: some View {
         RoundedRectangle(cornerRadius: 8)
@@ -103,6 +137,35 @@ private struct CellView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
             )
-            .modifier(ShakeEffect(trigger: triggerShake))
+    }
+}
+
+private struct CellView: View {
+    let item: GridItem
+    let section: DemoViewModel.Section
+    let itemSize: CGFloat
+
+    @EnvironmentObject private var viewModel: DemoViewModel
+    @EnvironmentObject private var dragManager: DragManager<GridItem>
+
+    var body: some View {
+        CellPreview(item: item)
+            .modifier(ShakeEffect(trigger: viewModel.triggerShake))
+            .gesture(
+                DragGesture(minimumDistance: 10, coordinateSpace: .named(DragContainerConstant.coordinateSpaceID))
+                    .onChanged { value in
+                        if !dragManager.isDragging {
+                            viewModel.startDragging(item: item, section: section)
+                            dragManager.draggedItem = item
+                        }
+                        dragManager.dragPosition = value.location
+                    }
+                    .onEnded { value in
+                        viewModel.onDropItem(for: item, at: value.location)
+                        viewModel.endDragging()
+                        dragManager.draggedItem = nil
+                        dragManager.dragPosition = .zero
+                    }
+            )
     }
 }

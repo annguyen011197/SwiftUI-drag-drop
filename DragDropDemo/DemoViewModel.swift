@@ -1,17 +1,30 @@
 import Combine
 import SwiftUI
 
-class DemoViewModel: ObservableObject {
+struct DropReceiverArea: DropReceiver {
+    var dropArea: CGRect? = nil
+}
+
+class DemoViewModel: DropReceivableObservableObject {
+
+    
+    typealias DropReceivable = DropReceiverArea
+    
     @Published var itemsA: [GridItem]
     @Published var itemsB: [GridItem]
     @Published var columnCount = 3
     @Published var triggerShake = false
     @Published var offsetsA: [String: CGPoint] = [:]
     @Published var offsetsB: [String: CGPoint] = [:]
+    @Published var draggingItemId: String? = nil
+    @Published var draggingSection: Section? = nil
+    @Published var sectionOriginA: CGPoint? = nil
+    @Published var sectionOriginB: CGPoint? = nil
+    @Published var availableWidth: CGFloat = 0
 
     let spacing: CGFloat = 8
 
-    enum Section { case a, b }
+    enum Section: String { case a, b }
 
     init() {
         itemsA = [
@@ -36,6 +49,16 @@ class DemoViewModel: ObservableObject {
         ]
     }
 
+    var itemSize: CGFloat {
+        (availableWidth - CGFloat(columnCount - 1) * spacing) / CGFloat(columnCount)
+    }
+    
+    var dropReceiver: DropReceiverArea = DropReceiverArea()
+    
+    func setDropArea(_ dropArea: CGRect, on dropReceiverArea: DropReceiverArea) {
+        dropReceiver.updateDropArea(with: dropArea)
+    }
+
     func updateOffsets(for section: Section, items: [GridItem], availableWidth: CGFloat) {
         let itemSize = (availableWidth - CGFloat(columnCount - 1) * spacing) / CGFloat(columnCount)
         var newOffsets: [String: CGPoint] = [:]
@@ -52,6 +75,109 @@ class DemoViewModel: ObservableObject {
             case .a: offsetsA = newOffsets
             case .b: offsetsB = newOffsets
             }
+        }
+    }
+
+    func offset(for item: GridItem, in section: Section) -> CGPoint? {
+        switch section {
+        case .a: return offsetsA[item.id]
+        case .b: return offsetsB[item.id]
+        }
+    }
+
+    func sectionOrigin(for section: Section) -> CGPoint? {
+        switch section {
+        case .a: return sectionOriginA
+        case .b: return sectionOriginB
+        }
+    }
+
+    func updateSectionOrigin(_ origin: CGPoint, for section: Section) {
+        switch section {
+        case .a: sectionOriginA = origin
+        case .b: sectionOriginB = origin
+        }
+    }
+
+    func startDragging(item: GridItem, section: Section) {
+        draggingItemId = item.id
+        draggingSection = section
+    }
+
+    func endDragging() {
+        draggingItemId = nil
+        draggingSection = nil
+    }
+    
+    func onDropItem(for item: GridItem, at position: CGPoint) {
+        if let dropReceiver = dropReceiver.getDropArea(), dropReceiver.contains(position) {
+            itemsA.append(item)
+            itemsB.removeAll {
+                $0.id == item.id
+            }
+        }
+    }
+
+    func dropTarget(
+        translation: CGSize,
+        itemOffset: CGPoint,
+        sourceSection: Section
+    ) -> (Section, Int) {
+        guard let sectionOrigin = sectionOrigin(for: sourceSection) else {
+            return (sourceSection, itemsA.count)
+        }
+
+        let endX = itemOffset.x + translation.width
+        let endY = itemOffset.y + translation.height
+        let globalY = sectionOrigin.y + endY
+
+        let rowsA = CGFloat((itemsA.count + columnCount - 1) / max(1, columnCount))
+        let sectionAHeight = rowsA * itemSize + (rowsA - 1) * spacing
+        let rowsB = CGFloat((itemsB.count + columnCount - 1) / max(1, columnCount))
+        let sectionBHeight = rowsB * itemSize + (rowsB - 1) * spacing
+
+        var targetSection = sourceSection
+        if let originA = sectionOriginA, let originB = sectionOriginB {
+            if globalY >= originB.y && globalY < originB.y + sectionBHeight + 200 {
+                targetSection = .b
+            } else if globalY >= originA.y && globalY < originA.y + sectionAHeight + 200 {
+                targetSection = .a
+            }
+        }
+
+        let col = max(0, min(Int(ceil(endX / (itemSize + spacing))), columnCount - 1))
+        let row = max(0, Int(endY / (itemSize + spacing)))
+        let maxIndex = targetSection == .a ? itemsA.count : itemsB.count
+        let index = min(row * columnCount + col, maxIndex)
+
+        return (targetSection, index)
+    }
+
+    func moveItem(id: String, to destination: Section, at index: Int) {
+        withAnimation(.spring()) {
+            var adjustedIndex = index
+
+            if let srcIndex = itemsA.firstIndex(where: { $0.id == id }) {
+                let item = itemsA.remove(at: srcIndex)
+                if destination == .a && srcIndex < adjustedIndex {
+                    adjustedIndex -= 1
+                }
+                insert(item, to: destination, at: adjustedIndex)
+            } else if let srcIndex = itemsB.firstIndex(where: { $0.id == id }) {
+                let item = itemsB.remove(at: srcIndex)
+                insert(item, to: destination, at: adjustedIndex)
+            }
+        }
+    }
+
+    private func insert(_ item: GridItem, to destination: Section, at index: Int) {
+        switch destination {
+        case .a:
+            let clamped = min(index, itemsA.count)
+            itemsA.insert(item, at: clamped)
+        case .b:
+            itemsB.append(item)
+            itemsB.sort { $0.index < $1.index }
         }
     }
 }
