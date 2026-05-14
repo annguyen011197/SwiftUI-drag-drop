@@ -14,10 +14,15 @@ struct DragDropDemoView: View {
                         SectionView(section: .b, availableWidth: width)
                     }
                     .padding()
-                    .modifier(DragContainer(preview: { (item: GridItem) in
-                        CellPreview(item: item)
-                            .frame(width: viewModel.itemSize, height: viewModel.itemSize)
-                    }))
+                    .modifier(DragContainer(
+                        preview: { (item: GridItem) in
+                            CellPreview(item: item)
+                                .frame(width: viewModel.itemSize, height: viewModel.itemSize)
+                        },
+                        onDragPositionChanged: { position in
+                            viewModel.updateDragPosition(position)
+                        }
+                    ))
                 }
             }
             .onAppear {
@@ -61,9 +66,11 @@ private struct SectionView: View {
     }
 
     private var totalHeight: CGFloat {
-        let visibleCount = items.filter { $0.id != viewModel.draggingItem?.id }.count
-        guard visibleCount > 0 else { return itemSize }
-        let rows = CGFloat((visibleCount + viewModel.columnCount - 1) / viewModel.columnCount)
+        let realVisible = items.filter { $0.id != viewModel.draggingItem?.id }.count
+        let placeholderExtra = (section == .a && viewModel.placeholderIndex != nil) ? 1 : 0
+        let count = realVisible + placeholderExtra
+        guard count > 0 else { return itemSize }
+        let rows = CGFloat((count + viewModel.columnCount - 1) / viewModel.columnCount)
         return rows * itemSize + (rows - 1) * viewModel.spacing
     }
 
@@ -71,25 +78,48 @@ private struct SectionView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(section == .a ? "Section A" : "Section B")
                 .font(.headline)
+
             ZStack(alignment: .topLeading) {
                 Color.clear.frame(height: totalHeight)
 
+                if section == .a, let pIdx = viewModel.placeholderIndex {
+                    let col = pIdx % viewModel.columnCount
+                    let row = pIdx / viewModel.columnCount
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.4))
+                        .frame(width: itemSize, height: itemSize)
+                        .offset(
+                            x: CGFloat(col) * (itemSize + viewModel.spacing),
+                            y: CGFloat(row) * (itemSize + viewModel.spacing)
+                        )
+                        .transition(.scale(scale: 0.85).combined(with: .opacity))
+                }
+
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    let isDragging = viewModel.draggingItem?.id == item.id
+
                     let visibleIndex = items.prefix(index).filter {
                         $0.id != viewModel.draggingItem?.id
                     }.count
 
+                    let slotIndex: Int = {
+                        guard section == .a, let pIdx = viewModel.placeholderIndex, !isDragging else {
+                            return visibleIndex
+                        }
+                        return visibleIndex >= pIdx ? visibleIndex + 1 : visibleIndex
+                    }()
+
                     let offset = CGPoint(
-                        x: CGFloat(visibleIndex % viewModel.columnCount) * (itemSize + viewModel.spacing),
-                        y: CGFloat(visibleIndex / viewModel.columnCount) * (itemSize + viewModel.spacing)
+                        x: CGFloat(slotIndex % viewModel.columnCount) * (itemSize + viewModel.spacing),
+                        y: CGFloat(slotIndex / viewModel.columnCount) * (itemSize + viewModel.spacing)
                     )
-                    let isDragging = viewModel.draggingItem?.id == item.id
 
                     CellView(item: item, section: section, itemSize: itemSize)
                         .frame(width: itemSize, height: itemSize)
                         .opacity(isDragging ? 0 : 1)
                         .allowsHitTesting(!isDragging)
                         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: viewModel.draggingItem?.id)
+                        .animation(.spring(response: 0.25, dampingFraction: 0.7), value: viewModel.placeholderIndex)
                         .offset(x: offset.x, y: offset.y)
                 }
             }

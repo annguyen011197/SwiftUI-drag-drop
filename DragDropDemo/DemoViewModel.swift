@@ -13,6 +13,7 @@ class DemoViewModel: DropReceivableObservableObject {
     @Published var columnCount = 3
     @Published var triggerShake = false
     @Published var draggingItem: GridItem? = nil
+    @Published var placeholderIndex: Int? = nil
     @Published var availableWidth: CGFloat = 0
 
     private var draggingFromSection: Section? = nil
@@ -59,10 +60,38 @@ class DemoViewModel: DropReceivableObservableObject {
         draggingItem = item
         draggingFromSection = section
         switch section {
-        case .a:
-            draggingFromIndex = itemsA.firstIndex(where: { $0.id == item.id })
-        case .b:
-            draggingFromIndex = itemsB.firstIndex(where: { $0.id == item.id })
+        case .a: draggingFromIndex = itemsA.firstIndex(where: { $0.id == item.id })
+        case .b: draggingFromIndex = itemsB.firstIndex(where: { $0.id == item.id })
+        }
+    }
+
+    func updateDragPosition(_ position: CGPoint) {
+        guard draggingItem != nil,
+              let dropArea = dropReceiver.getDropArea(),
+              dropArea.contains(position) else {
+            if placeholderIndex != nil {
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                    placeholderIndex = nil
+                }
+            }
+            return
+        }
+
+        let localX = position.x - dropArea.minX
+        let localY = position.y - dropArea.minY
+
+        let col = max(0, min(columnCount - 1, Int(localX / (itemSize + spacing))))
+        let row = max(0, Int(localY / (itemSize + spacing)))
+
+        let baseCount = itemsA.filter { $0.id != draggingItem?.id }.count
+        let maxIndex = baseCount
+
+        let newIndex = min(row * columnCount + col, maxIndex)
+
+        if newIndex != placeholderIndex {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                placeholderIndex = newIndex
+            }
         }
     }
 
@@ -79,7 +108,8 @@ class DemoViewModel: DropReceivableObservableObject {
             }
 
             if success {
-                itemsA.append(item)
+                let insertAt = min(placeholderIndex ?? itemsA.count, itemsA.count)
+                itemsA.insert(item, at: insertAt)
             } else {
                 let fromIndex = draggingFromIndex ?? 0
                 switch fromSection {
@@ -87,6 +117,8 @@ class DemoViewModel: DropReceivableObservableObject {
                 case .b: itemsB.insert(item, at: min(fromIndex, itemsB.count))
                 }
             }
+
+            placeholderIndex = nil
         }
 
         draggingItem = nil

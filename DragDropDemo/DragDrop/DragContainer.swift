@@ -7,7 +7,8 @@ struct DragContainerConstant {
 struct DragContainer<T: Equatable, Preview: View>: ViewModifier {
     @StateObject var dragManager: DragManager<T> = .init()
 
-    @ViewBuilder var preview: (T) -> Preview
+    let preview: (T) -> Preview
+    let onDragPositionChanged: ((CGPoint) -> Void)?
 
     func body(content: Content) -> some View {
         ZStack {
@@ -19,6 +20,9 @@ struct DragContainer<T: Equatable, Preview: View>: ViewModifier {
                 preview(item)
                     .position(dragManager.dragPosition)
             }
+        }
+        .onChange(of: dragManager.dragPosition) { newPosition in
+            onDragPositionChanged?(newPosition)
         }
     }
 }
