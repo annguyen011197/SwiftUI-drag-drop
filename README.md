@@ -11,6 +11,7 @@ A reusable SwiftUI drag-and-drop module for iOS 14+. Copy the `DragDrop/` folder
 | `DropReceiver.swift` | Protocol for defining drop target areas |
 | `DropAreaOverlay.swift` | `ViewModifier` + `View` extension that reports a view's frame as a drop target |
 | `DragableObject.swift` | `ViewModifier` + `View` extension to make any view draggable with `DragGesture` |
+| `DraggableGridView.swift` | Generic grid layout with drag-dimming, placeholder slot, and animated item rearrangement |
 
 ## Quick Start
 
@@ -205,6 +206,53 @@ func dropReceiver<T: DropReceivableObservableObject>(
 ```
 
 Attaches a `GeometryReader` overlay that reports the view's frame in the `DragContainer`'s coordinate space. On iOS, it also updates on device rotation.
+
+### DraggableGridView
+
+A generic grid that handles offset-based layout, drag-dimming, placeholder slots, and animated rearrangement.
+
+```swift
+// With placeholder (for drop targets)
+DraggableGridView(
+    items: items,
+    columns: 3,
+    spacing: 8,
+    availableWidth: width,
+    draggingItemId: viewModel.draggingItem?.id,
+    placeholderIndex: viewModel.placeholderIndex,
+    content: { item, itemSize in
+        MyCell(item: item, itemSize: itemSize)
+    },
+    placeholder: { itemSize in
+        RoundedRectangle(cornerRadius: 8)
+            .fill(Color.gray.opacity(0.4))
+            .frame(width: itemSize, height: itemSize)
+    }
+)
+
+// Without placeholder (source-only grids)
+DraggableGridView(
+    items: items,
+    columns: 3,
+    spacing: 8,
+    availableWidth: width,
+    draggingItemId: viewModel.draggingItem?.id,
+    content: { item, itemSize in
+        MyCell(item: item, itemSize: itemSize)
+    }
+)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `items` | `[T]` where `T: Identifiable` | The data array to display |
+| `columns` | `Int` | Number of columns |
+| `spacing` | `CGFloat` | Spacing between items |
+| `availableWidth` | `CGFloat` | Total width for the grid |
+| `draggingItemId` | `T.ID?` | ID of the currently-dragged item (dimmed to opacity 0) |
+| `placeholderIndex` | `Int?` | Slot index where a drop placeholder appears |
+| `content` | `(T, CGFloat) -> ItemContent` | View builder receiving item and computed `itemSize` |
+| `placeholder` | `(CGFloat) -> PlaceholderContent` | View builder for the placeholder slot (receives `itemSize`) |
 
 ## Architecture
 
