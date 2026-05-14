@@ -1,6 +1,6 @@
 import Foundation
 
-struct GridItem: Identifiable, Codable, Hashable {
+struct GridItem: Identifiable, Codable, Hashable, Dragable {
     let id: String
     let label: String
     let hue: Double

@@ -110,26 +110,17 @@ private struct CellView: View {
     let itemSize: CGFloat
 
     @EnvironmentObject private var viewModel: DemoViewModel
-    @EnvironmentObject private var dragManager: DragManager<GridItem>
 
     var body: some View {
         CellPreview(item: item)
             .modifier(ShakeEffect(trigger: viewModel.triggerShake))
-            .gesture(
-                DragGesture(minimumDistance: 10, coordinateSpace: .named(DragContainerConstant.coordinateSpaceID))
-                    .onChanged { value in
-                        if !dragManager.isDragging {
-                            viewModel.startDragging(item: item, section: section)
-                            dragManager.draggedItem = item
-                        }
-                        dragManager.dragPosition = value.location
-                    }
-                    .onEnded { value in
-                        viewModel.onDropItem(for: item, at: value.location)
-                        viewModel.endDragging()
-                        dragManager.draggedItem = nil
-                        dragManager.dragPosition = .zero
-                    }
+            .dragableObject(item,
+                onDragStarted: { _ in viewModel.startDragging(item: item, section: section) },
+                onDrop: { item, position in
+                    let success = viewModel.onDropItem(for: item, at: position)
+                    viewModel.endDragging()
+                    return success
+                }
             )
     }
 }

@@ -60,12 +60,15 @@ class DemoViewModel: DropReceivableObservableObject {
         draggingItemId = nil
     }
 
-    func onDropItem(for item: GridItem, at position: CGPoint) {
+    @discardableResult
+    func onDropItem(for item: GridItem, at position: CGPoint) -> Bool {
         if let dropReceiver = dropReceiver.getDropArea(), dropReceiver.contains(position) {
             itemsA.append(item)
             itemsB.removeAll {
                 $0.id == item.id
             }
+            return true
         }
+        return false
     }
 }
