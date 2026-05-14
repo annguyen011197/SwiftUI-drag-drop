@@ -7,25 +7,18 @@ struct DragDropDemoView: View {
         GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 24) {
-                    GridSection(
+                    SectionView(
                         title: "Section A",
                         items: viewModel.itemsA,
-                        section: .a,
                         columnCount: viewModel.columnCount,
-                        triggerShake: viewModel.triggerShake,
-                        fillsRemainingSpace: false,
-                        onDrop: { viewModel.moveItem(id: $0, to: .a, at: $1) }
+                        triggerShake: viewModel.triggerShake
                     )
-                    GridSection(
+                    SectionView(
                         title: "Section B",
                         items: viewModel.itemsB,
-                        section: .b,
                         columnCount: viewModel.columnCount,
-                        triggerShake: viewModel.triggerShake,
-                        fillsRemainingSpace: true,
-                        onDrop: { viewModel.moveItem(id: $0, to: .b, at: $1) }
+                        triggerShake: viewModel.triggerShake
                     )
-                    .frame(maxHeight: .infinity)
                 }
                 .frame(minHeight: geo.size.height)
                 .padding()
@@ -43,5 +36,48 @@ struct DragDropDemoView: View {
                 viewModel.triggerShake = false
             }
         }
+    }
+}
+
+private struct SectionView: View {
+    let title: String
+    let items: [GridItem]
+    let columnCount: Int
+    let triggerShake: Bool
+
+    private var columns: [SwiftUI.GridItem] {
+        Array(repeating: SwiftUI.GridItem(.flexible(), spacing: 8), count: columnCount)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 8) {
+                    ForEach(items) { item in
+                        CellView(item: item, triggerShake: triggerShake)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct CellView: View {
+    let item: GridItem
+    let triggerShake: Bool
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(Color(hue: item.hue, saturation: 0.4, brightness: 0.9))
+            .aspectRatio(1, contentMode: .fit)
+            .overlay(
+                Text(item.label)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+            )
+            .modifier(ShakeEffect(trigger: triggerShake))
     }
 }

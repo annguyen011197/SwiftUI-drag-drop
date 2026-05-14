@@ -31,35 +31,4 @@ class DemoViewModel: ObservableObject {
             GridItem(label: "Cherry", hue: 0.98, index: 7),
         ]
     }
-
-    func moveItem(id: UUID, to destination: Section, at index: Int) {
-        withAnimation(.spring()) {
-            var adjustedIndex = index
-
-            if let srcIndex = itemsA.firstIndex(where: { $0.id == id }) {
-                let item = itemsA.remove(at: srcIndex)
-                if destination == .a && srcIndex < adjustedIndex {
-                    adjustedIndex -= 1
-                }
-                switch destination {
-                case .a:
-                    adjustedIndex = min(adjustedIndex, itemsA.count)
-                    itemsA.insert(item, at: adjustedIndex)
-                case .b:
-                    itemsB.append(item)
-                    itemsB.sort { $0.index < $1.index }
-                }
-            } else if let srcIndex = itemsB.firstIndex(where: { $0.id == id }) {
-                let item = itemsB.remove(at: srcIndex)
-                switch destination {
-                case .a:
-                    adjustedIndex = min(adjustedIndex, itemsA.count)
-                    itemsA.insert(item, at: adjustedIndex)
-                case .b:
-                    itemsB.append(item)
-                    itemsB.sort { $0.index < $1.index }
-                }
-            }
-        }
-    }
 }
