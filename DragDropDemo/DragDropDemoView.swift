@@ -31,7 +31,7 @@ struct DragDropDemoView: View {
         .navigationTitle("Workspace")
         .toolbar {
             ToolbarItem(placement: .bottomBar) {
-                Stepper("Columns: \(viewModel.columnCount)", value: $viewModel.columnCount, in: 2 ... 6)
+                Stepper("Columns: \(viewModel.columnCount)", value: $viewModel.columnCount, in: 2...6)
             }
         }
         .onAppear {
@@ -61,8 +61,9 @@ private struct SectionView: View {
     }
 
     private var totalHeight: CGFloat {
-        guard !items.isEmpty else { return itemSize }
-        let rows = CGFloat((items.count + viewModel.columnCount - 1) / viewModel.columnCount)
+        let visibleCount = items.filter { $0.id != viewModel.draggingItem?.id }.count
+        guard visibleCount > 0 else { return itemSize }
+        let rows = CGFloat((visibleCount + viewModel.columnCount - 1) / viewModel.columnCount)
         return rows * itemSize + (rows - 1) * viewModel.spacing
     }
 
@@ -71,18 +72,25 @@ private struct SectionView: View {
             Text(section == .a ? "Section A" : "Section B")
                 .font(.headline)
             ZStack(alignment: .topLeading) {
-                Color.clear
-                    .frame(height: totalHeight)
+                Color.clear.frame(height: totalHeight)
 
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    let visibleIndex = items.prefix(index).filter {
+                        $0.id != viewModel.draggingItem?.id
+                    }.count
+
                     let offset = CGPoint(
-                        x: CGFloat(index % viewModel.columnCount) * (itemSize + viewModel.spacing),
-                        y: CGFloat(index / viewModel.columnCount) * (itemSize + viewModel.spacing)
+                        x: CGFloat(visibleIndex % viewModel.columnCount) * (itemSize + viewModel.spacing),
+                        y: CGFloat(visibleIndex / viewModel.columnCount) * (itemSize + viewModel.spacing)
                     )
+                    let isDragging = viewModel.draggingItem?.id == item.id
+
                     CellView(item: item, section: section, itemSize: itemSize)
                         .frame(width: itemSize, height: itemSize)
+                        .opacity(isDragging ? 0 : 1)
+                        .allowsHitTesting(!isDragging)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: viewModel.draggingItem?.id)
                         .offset(x: offset.x, y: offset.y)
-                        .opacity(viewModel.draggingItemId == item.id ? 0.3 : 1.0)
                 }
             }
         }
@@ -115,11 +123,11 @@ private struct CellView: View {
         CellPreview(item: item)
             .modifier(ShakeEffect(trigger: viewModel.triggerShake))
             .dragableObject(item,
-                onDragStarted: { _ in viewModel.startDragging(item: item, section: section) },
+                onDragStarted: { _ in
+                    viewModel.startDragging(item: item, section: section)
+                },
                 onDrop: { item, position in
-                    let success = viewModel.onDropItem(for: item, at: position)
-                    viewModel.endDragging()
-                    return success
+                    return viewModel.endDragging(droppedAt: position)
                 }
             )
     }
