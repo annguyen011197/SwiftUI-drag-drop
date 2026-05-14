@@ -7,13 +7,6 @@
 
 import Foundation
 
-public enum DragState {
-    case none
-    case unknown
-    case accepted
-    case rejected
-}
-
 public protocol DropReceiver {
     var dropArea: CGRect? { get set }
     mutating func updateDropArea(with newDropArea: CGRect)

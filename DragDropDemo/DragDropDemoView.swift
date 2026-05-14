@@ -1,29 +1,5 @@
 import SwiftUI
 
-struct DragContainerConstant {
-    static let coordinateSpaceID: UUID = UUID()
-}
-
-struct DragContainer<T: Equatable, Preview: View>: ViewModifier {
-    @StateObject var dragManager: DragManager<T> = .init()
-    
-    @ViewBuilder var preview: (T) -> Preview
-    
-    func body(content: Content) -> some View {
-        ZStack {
-            content
-                .coordinateSpace(name: DragContainerConstant.coordinateSpaceID)
-                .environmentObject(dragManager)
-            
-            if let item = dragManager.draggedItem {
-                preview(item)
-                    .position(dragManager.dragPosition)
-            }
-            
-        }
-    }
-}
-
 struct DragDropDemoView: View {
     @StateObject private var viewModel = DemoViewModel()
 
@@ -36,7 +12,6 @@ struct DragDropDemoView: View {
                         SectionView(section: .a, availableWidth: width)
                             .dropReceiver(for: viewModel.dropReceiver, model: viewModel)
                         SectionView(section: .b, availableWidth: width)
-                        
                     }
                     .padding()
                     .modifier(DragContainer(preview: { (item: GridItem) in
@@ -44,8 +19,6 @@ struct DragDropDemoView: View {
                             .frame(width: viewModel.itemSize, height: viewModel.itemSize)
                     }))
                 }
-
-
             }
             .onAppear {
                 viewModel.availableWidth = width
@@ -70,8 +43,6 @@ struct DragDropDemoView: View {
     }
 }
 
-
-
 private struct SectionView: View {
     let section: DemoViewModel.Section
     let availableWidth: CGFloat
@@ -82,13 +53,6 @@ private struct SectionView: View {
         switch section {
         case .a: return viewModel.itemsA
         case .b: return viewModel.itemsB
-        }
-    }
-
-    private var offsets: [String: CGPoint] {
-        switch section {
-        case .a: return viewModel.offsetsA
-        case .b: return viewModel.offsetsB
         }
     }
 
@@ -111,7 +75,7 @@ private struct SectionView: View {
                     .frame(height: totalHeight)
 
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                    let offset = offsets[item.id] ?? CGPoint(
+                    let offset = CGPoint(
                         x: CGFloat(index % viewModel.columnCount) * (itemSize + viewModel.spacing),
                         y: CGFloat(index / viewModel.columnCount) * (itemSize + viewModel.spacing)
                     )
